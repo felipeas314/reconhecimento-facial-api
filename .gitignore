@@ -1,0 +1,47 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Diretórios de ambientes virtuais
+venv/
+.env/
+
+# Configurações específicas do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos de logs e temporários
+*.log
+*.tmp
+*.swp
+
+# Dependências instaladas
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Arquivos de IDEs e editores de texto
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Arquivos de testes e coberturas
+.tox/
+.nox/
+.coverage
+htmlcov/
+
+# Arquivos do Jupyter Notebook
+.ipynb_checkpoints/
+
+# Arquivos de build e distribuição
+dist/
+build/
+*.egg-info/
+
+# Chaves e credenciais
+*.pem
+*.key
+.env
+.env.local
