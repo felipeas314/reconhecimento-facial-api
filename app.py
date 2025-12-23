@@ -1,13 +1,12 @@
 import os
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from typing import Optional
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 from utils.face_utils import register_face, recognize_face
 from utils.upload_utils import save_uploaded_files
-
-app = Flask(__name__)
-CORS(app)
 
 # Configuração do Qdrant
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
@@ -34,44 +33,68 @@ def init_qdrant():
         print(f"Collection '{COLLECTION_NAME}' criada com sucesso.")
 
 
-@app.route("/post-face", methods=["POST"])
-def post_face():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_qdrant()
+    yield
+
+
+app = FastAPI(
+    title="API de Reconhecimento Facial",
+    description="API para cadastro e reconhecimento de faces usando Qdrant",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.post("/post-face")
+async def post_face(
+    label: str = Form(...),
+    File1: Optional[UploadFile] = File(None),
+    File2: Optional[UploadFile] = File(None),
+    File3: Optional[UploadFile] = File(None),
+):
     """Rota para cadastrar rosto."""
-    label = request.form.get("label")
-    if not label:
-        return jsonify({"error": "O campo 'label' é obrigatório."}), 400
+    files = [f for f in [File1, File2, File3] if f is not None]
 
-    files = save_uploaded_files(request.files, "uploads/")
     if len(files) < 3:
-        return jsonify({"error": "Por favor, envie 3 imagens para o cadastro."}), 400
+        raise HTTPException(status_code=400, detail="Por favor, envie 3 imagens para o cadastro.")
 
-    result = register_face(files, label, qdrant)
+    file_paths = await save_uploaded_files(files, "uploads/")
+
+    result = register_face(file_paths, label, qdrant)
     if result:
-        return jsonify({"message": "Rosto cadastrado com sucesso."})
-    return jsonify({"error": "Erro ao registrar o rosto."}), 500
+        return {"message": "Rosto cadastrado com sucesso."}
+
+    raise HTTPException(status_code=500, detail="Erro ao registrar o rosto.")
 
 
-@app.route("/check-face", methods=["POST"])
-def check_face():
+@app.post("/check-face")
+async def check_face(File1: UploadFile = File(...)):
     """Rota para reconhecer rosto."""
-    if "File1" not in request.files:
-        return jsonify({"error": "Nenhuma imagem enviada."}), 400
-
-    file_path = save_uploaded_files(request.files, "uploads/", single=True)
+    file_path = await save_uploaded_files([File1], "uploads/", single=True)
     results = recognize_face(file_path, qdrant)
 
     if not results:
-        return jsonify({"message": "Nenhuma correspondência encontrada."})
+        return {"message": "Nenhuma correspondência encontrada."}
 
-    return jsonify({"result": results})
+    return {"result": results}
 
 
-@app.route("/health", methods=["GET"])
-def health():
+@app.get("/health")
+async def health():
     """Health check endpoint."""
-    return jsonify({"status": "ok"})
+    return {"status": "ok"}
 
 
 if __name__ == "__main__":
-    init_qdrant()
-    app.run(debug=True, host="0.0.0.0", port=5001)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=5001)
