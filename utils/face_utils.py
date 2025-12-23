@@ -1,9 +1,10 @@
 import face_recognition
-import numpy as np
-from models.embeddings import save_embedding, load_embeddings
+from qdrant_client import QdrantClient
+from models.embeddings import save_embedding, search_embedding
 
 
-def register_face(image_paths, label, mongo):
+def register_face(image_paths: list, label: str, qdrant: QdrantClient):
+    """Registra uma face extraindo embeddings de múltiplas imagens."""
     try:
         embeddings = []
         for path in image_paths:
@@ -11,39 +12,29 @@ def register_face(image_paths, label, mongo):
             face_encodings = face_recognition.face_encodings(image)
             if face_encodings:
                 embeddings.append(face_encodings[0])
+
         if embeddings:
-            save_embedding(label, embeddings, mongo)
+            save_embedding(label, embeddings, qdrant)
             return True
     except Exception as e:
         print(f"Erro ao registrar rosto: {e}")
     return False
 
 
-def recognize_face(image_path, mongo):
+def recognize_face(image_path: str, qdrant: QdrantClient):
+    """Reconhece faces em uma imagem usando busca vetorial no Qdrant."""
     try:
-        # Carregar a imagem
         image = face_recognition.load_image_file(image_path)
         face_encodings = face_recognition.face_encodings(image)
 
         if not face_encodings:
             return []
 
-        # Carregar embeddings do banco de dados
-        embeddings = load_embeddings(mongo)
-
         results = []
         for encoding in face_encodings:
-            distances = []
-            labels = []
-            for face in embeddings:
-                for descriptor in face["descriptors"]:
-                    distance = np.linalg.norm(encoding - np.array(descriptor))
-                    distances.append(distance)
-                    labels.append(face["label"])
-            # Encontrar a menor distância
-            min_distance_index = np.argmin(distances)
-            if distances[min_distance_index] < 0.6:
-                results.append({"label": labels[min_distance_index], "distance": distances[min_distance_index]})
+            matches = search_embedding(encoding.tolist(), qdrant)
+            results.extend(matches)
+
         return results
     except Exception as e:
         print(f"Erro ao reconhecer rosto: {e}")
