@@ -7,7 +7,6 @@ from qdrant_client import QdrantClient
 from src.config.database import get_qdrant_client
 from src.repositories.face_repository import FaceRepository
 from src.services.face_service import FaceService
-from src.utils.upload import save_uploaded_files
 
 router = APIRouter(tags=["Legacy"])
 
@@ -34,9 +33,9 @@ async def post_face(
             detail="Por favor, envie 3 imagens para o cadastro."
         )
 
-    file_paths = await save_uploaded_files(files)
+    images_bytes = [await f.read() for f in files]
 
-    if service.register_face(file_paths, label):
+    if service.register_face(images_bytes, label):
         return {"message": "Rosto cadastrado com sucesso."}
 
     raise HTTPException(status_code=500, detail="Erro ao registrar o rosto.")
@@ -48,8 +47,8 @@ async def check_face(
     service: FaceService = Depends(get_face_service)
 ):
     """[LEGACY] Reconhece uma face comparando com as cadastradas."""
-    file_path = await save_uploaded_files([File1], single=True)
-    results = service.recognize_face(file_path)
+    image_bytes = await File1.read()
+    results = service.recognize_face(image_bytes)
 
     if not results:
         return {"message": "Nenhuma correspondência encontrada."}

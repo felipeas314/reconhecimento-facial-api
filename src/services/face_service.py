@@ -1,6 +1,9 @@
+from io import BytesIO
 from typing import List
 
 import face_recognition
+import numpy as np
+from PIL import Image
 
 from src.repositories.face_repository import FaceRepository
 from src.schemas.face import FaceMatch
@@ -12,12 +15,17 @@ class FaceService:
     def __init__(self, repository: FaceRepository):
         self.repository = repository
 
-    def register_face(self, image_paths: List[str], label: str) -> bool:
+    def _load_image_from_bytes(self, image_bytes: bytes) -> np.ndarray:
+        """Carrega imagem dos bytes para numpy array."""
+        image = Image.open(BytesIO(image_bytes))
+        return np.array(image)
+
+    def register_face(self, images_bytes: List[bytes], label: str) -> bool:
         """Registra uma face extraindo embeddings de múltiplas imagens."""
         try:
             embeddings = []
-            for path in image_paths:
-                image = face_recognition.load_image_file(path)
+            for img_bytes in images_bytes:
+                image = self._load_image_from_bytes(img_bytes)
                 face_encodings = face_recognition.face_encodings(image)
                 if face_encodings:
                     embeddings.append(face_encodings[0])
@@ -31,10 +39,10 @@ class FaceService:
 
         return False
 
-    def recognize_face(self, image_path: str) -> List[FaceMatch]:
+    def recognize_face(self, image_bytes: bytes) -> List[FaceMatch]:
         """Reconhece faces em uma imagem usando busca vetorial."""
         try:
-            image = face_recognition.load_image_file(image_path)
+            image = self._load_image_from_bytes(image_bytes)
             face_encodings = face_recognition.face_encodings(image)
 
             if not face_encodings:

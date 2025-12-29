@@ -28,10 +28,8 @@ reconhecimento-facial-api/
 │   │   └── face_service.py     # Lógica de reconhecimento
 │   ├── repositories/           # Acesso a dados
 │   │   └── face_repository.py  # Operações no Qdrant
-│   ├── schemas/                # DTOs/Models
-│   │   └── face.py             # Request/Response models
-│   └── utils/
-│       └── upload.py           # Utilitários de upload
+│   └── schemas/                # DTOs/Models
+│       └── face.py             # Request/Response models
 ├── docker-compose.yml
 ├── Dockerfile
 └── requirements.txt

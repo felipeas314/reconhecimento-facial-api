@@ -20,9 +20,6 @@ class Settings(BaseSettings):
     vector_size: int = 128  # Tamanho do embedding do face_recognition
     similarity_threshold: float = 0.6
 
-    # Upload
-    upload_dir: str = "uploads"
-
     class Config:
         env_file = ".env"
 
